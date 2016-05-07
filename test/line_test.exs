@@ -159,7 +159,7 @@ defmodule LineTest do
          test("line: '" <> text <> "'") do
            struct = unquote(Macro.escape type)
            struct = %{ struct | line: unquote(text) }
-           assert Line.type_of(unquote(text), false) == struct
+           assert Line.type_of({unquote(text), 0}, false) == struct
          end
        end)
 

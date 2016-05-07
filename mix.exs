@@ -22,6 +22,7 @@ defmodule Earmark.Mixfile do
 
   defp deps do
     [{:poison, "~> 1.5", only: [:dev, :test]},
+     {:ex_doc, ">= 0.11.5", only: [:dev]},
      {:kwfuns, "~> 0.0", only: :test}]
   end
 
