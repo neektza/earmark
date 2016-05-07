@@ -93,7 +93,7 @@ defmodule Earmark.Line do
   end
 
   defp lines_with_count lines do
-    Enum.zip lines, 1..Enum.count(lines)
+    Enum.zip lines, 0..Enum.count(lines)
   end
 
   defp _type_of(line, options=%Earmark.Options{}, recursive) do
