@@ -6,6 +6,8 @@ defmodule Earmark.Inline do
   """
 
   import Earmark.Helpers
+  import Earmark.Helpers.StringHelpers
+
   alias Earmark.Context
 
   @doc false

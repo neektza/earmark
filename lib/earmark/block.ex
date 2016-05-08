@@ -1,6 +1,7 @@
 defmodule Earmark.Block do
 
-  import Earmark.Helpers, only: [pending_inline_code: 1, still_pending_inline_code: 2, emit_error: 4]
+  import Earmark.Helpers, only: [emit_error: 4]
+  import Earmark.Helpers.InlineCodeHelpers, only: [pending_inline_code: 1, still_pending_inline_code: 2]
 
   @moduledoc """
   Given a list of parsed blocks, convert them into blocks.
@@ -139,7 +140,8 @@ defmodule Earmark.Block do
   do
     {pending, {reversed_para_lines, rest}} = consolidate_para( lines )
     unless pending == :ok do
-      emit_error(filename, hd(tl(lines)), :warning, "Closing unclosed backquotes #{pending} at end of input")
+      {backquotes, lnb} = pending
+      emit_error(filename, lnb, :warning, "Closing unclosed backquotes #{backquotes} at end of input")
     end
     line_text = (for line <- (reversed_para_lines |> Enum.reverse), do: line.line)
     parse(rest, [ %Para{lines: line_text} | result ], filename)
@@ -317,12 +319,15 @@ defmodule Earmark.Block do
     {pending, {result, []}}
   end
 
-  defp consolidate_para( [line | rest] = lines, result, pending ) do
+  defp consolidate_para( [line | rest] = lines, result, pending = {backquotes, lnb} ) do
     case is_inline_or_text( line, pending ) do
       %{pending: still_pending, continue: true} -> consolidate_para( rest, [line | result], still_pending )
       _                                         -> {:ok, {result, lines}}
     end
+  end
 
+  defp consolidate_para( [line | _rest] = lines, result, backquotes ) do
+    consolidate_para( lines, result, {backquotes, line.lnb})
   end
 
   ##################################################
@@ -465,7 +470,7 @@ defmodule Earmark.Block do
 
   # Only now we match for list lines inside an open multiline inline code block
   defp read_list_lines([line|rest], result, opening_backquotes) do
-    read_list_lines(rest, [%{line|inside_code: true} | result], still_pending_inline_code(line.line, opening_backquotes))
+    read_list_lines(rest, [%{line|inside_code: true} | result], still_pending_inline_code(line.line, {opening_backquotes, line.lnb}))
   end
   # Running into EOI insise an open multiline inline code block
   defp read_list_lines([], result, opening_backquotes) do
@@ -591,7 +596,12 @@ defmodule Earmark.Block do
     %{pending: pending_inline_code(line.line), continue: true}
   end
   defp is_inline_or_text(line = %Line.TableLine{}, false) do
-    %{pending: pending_inline_code(line.line), continue: true}
+    backquotes = pending_inline_code(line.line)
+    if backquotes do
+      %{pending: {backquotes, line.lnb}, continue: true}
+    else
+      %{pending: false, continue: true}
+    end
   end
   defp is_inline_or_text( _line, false), do: %{pending: false, continue: false}
   defp is_inline_or_text( line, pending ) do

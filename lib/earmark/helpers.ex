@@ -1,5 +1,7 @@
 defmodule Earmark.Helpers do
 
+  import Earmark.Helpers.StringHelpers, only: [behead: 2]
+
   @doc """
   Expand tabs to multiples of 4 columns
   """
@@ -23,18 +25,6 @@ defmodule Earmark.Helpers do
   defp pad(2), do: "  "
   defp pad(3), do: "   "
   defp pad(4), do: "    "
-
-  @doc """
-  Remove the leading part of a string
-  """
-  def behead(str, ignore) when is_integer(ignore) do
-    String.slice(str, ignore..-1)
-  end
-  def behead(str, {start, length}), do: behead(str, start + length)
-
-  def behead(str, leading_string) do
-    behead(str, String.length(leading_string))
-  end
 
   @doc """
   `Regex.replace` with the arguments in the correct order
@@ -120,65 +110,6 @@ defmodule Earmark.Helpers do
   ################################################
   # Detection and Rendering of InlineCode Blocks #
   ################################################
-
-  @doc """
-  returns false unless the line leaves a code block open,
-  in which case the opening backquotes are returned as a string
-  """
-  @spec pending_inline_code(String.t()) :: String.t() | :false
-  def pending_inline_code( line ) do
-    line
-    |> behead_unopening_text
-    |> has_opening_backquotes
-  end
-
-  @inline_pairs ~r'''
-   ^(?:
-       (?:[^`]|\\`)*      # shortes possible prefix, not consuming unescaped `
-       (?<!\\)(`++)       # unescaped `, assuring longest match of `
-       .+?                # shortest match before...
-       (?<![\\`])\1(?!`)  # closing same length ` sequence
-    )+
-  '''x
-  @spec behead_unopening_text(String.t()) :: String.t()
-  # All pairs of sequences of backquotes and text in front and in between
-  # are removed from line.
-  defp behead_unopening_text( line ) do 
-    case Regex.run( @inline_pairs, line, return: :index ) do
-      [match_index_tuple | _rest] -> behead( line, match_index_tuple )
-      _no_match                   -> line
-    end 
-  end
-
-  @first_opening_backquotes ~r'''
-       ^(?:[^`]|\\`)*      # shortes possible prefix, not consuming unescaped `
-       (?<!\\)(`++)        # unescaped `, assuring longest match of `
-  '''x
-  @spec has_opening_backquotes(String.t()) :: String.t() | :false
-  defp has_opening_backquotes line do
-    case Regex.run( @first_opening_backquotes, line ) do 
-      [_total, opening_backquotes | _rest] -> opening_backquotes
-      _no_match                            -> false
-    end
-  end
-
-  @doc """
-  returns false if and only if the line closes a pending inline code
-  *without* opening a new one.
-  The opening backquotes are passed in as second parameter.
-  If the function does not return false it returns the (new or original)
-  opening backquotes 
-  """
-  @spec still_pending_inline_code(String.t(), String.t()) :: String.t() | :false
-  def still_pending_inline_code( line, opening_backquotes ) do
-    case ( ~r"""
-       ^.*?                                 # shortest possible prefix
-       (?<!\\)#{opening_backquotes}(?!`)    # unescaped ` with exactly the length of opening_backquotes
-      """x |> Regex.run( line, return: :index ) ) do
-        [match_index_tuple | _] ->  behead(line, match_index_tuple) |> pending_inline_code
-        nil                     ->  opening_backquotes
-    end
-  end
 
   @doc """
   Formats an error message and puts it to stderr
