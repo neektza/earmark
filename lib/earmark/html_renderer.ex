@@ -6,15 +6,25 @@ defmodule Earmark.HtmlRenderer do
     def exception(msg), do: %__MODULE__{message: msg}
   end
 
+  defmodule Separator, do: defstruct body: "__________CUTHERE__________"
+
   alias  Earmark.Block
   import Earmark.Inline,  only: [ convert: 2 ]
   import Earmark.Helpers, only: [ escape: 2, behead: 2 ]
 
   def render(blocks, context, map_func) do
-    map_func.(blocks, &(render_block(&1, context, map_func)))
+    blocks
+    |> Enum.intersperse(%Separator{})
+    |> map_func.(&(render_block(&1, context, map_func)))
     |> IO.iodata_to_binary
   end
 
+  #############
+  # Separator #
+  #############
+  def render_block(%Separator{body: body}, context, _mf) do
+    add_attrs(body, nil, [])
+  end
 
   #############
   # Paragraph #
